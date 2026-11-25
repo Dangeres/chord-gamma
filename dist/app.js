@@ -14,6 +14,10 @@ const roles = [
   {base:4, name:'Доминанта', color:'#f0b575', wash:'#322920', edge:'#4d4033'}
 ];
 const romans = ['I','II','III','IV','V','VI','VII','VIII'];
+const degreeNames = ['Тоника', 'Надтоника', 'Медианта', 'Субдоминанта', 'Доминанта', 'Субмедианта', 'Вводная ступень'];
+const exampleSteps = [[0], [1,0], [0,2], [3,2], [4,7], [5,4], [6,7]];
+let selectedDegree = 0;
+const flightTime = 1000, noteDelay = 140;
 const clefPath = 'M2 22 C-11 18 -13 9 -6 0 C-3 -4 1 -7 4 -11 C11 -19 11 -29 7 -36 C4 -40 0 -29 1 -20 L8 23 C10 35 -2 38 -5 30 C-7 24 0 21 2 26 C4 30 0 32 -2 31 C1 36 9 32 7 23 L0 -20 C-2 -30 3 -42 7 -40 C15 -29 10 -15 4 -7 C-1 0 -9 5 -8 12 C-8 19 -1 24 5 21 C15 17 12 6 6 5 C-2 3 -4 12 1 16 C-6 14 -7 8 -3 3 C4 -5 16 1 16 11 C16 19 9 24 2 22 Z';
 let pitch = 0, mode = 'major', muted = false, context, master, currentPlay;
 let timers = [], voices = [], flying = [], scale = [];
@@ -66,6 +70,50 @@ function drawScale() {
 }
 function scalePosition(index) { return index <= 7 ? index : index % 7; }
 function chordNotes(base) { return [0,2,4].map(offset=>makeNote(base+offset)); }
+function degreeLesson(index) {
+  const note = scale.map(n=>n.ru.toLowerCase());
+  const major = mode === 'major';
+  return [
+    `Главная опора гаммы. Завершите фразу на ноте ${note[0]}, и появится ощущение, что мелодия пришла домой.`,
+    `Отсюда до тоники один шаг вниз. Сыграйте ${note[1]}, а следом ${note[0]}, чтобы услышать, как напряжение ослабевает.`,
+    `Эта нота задаёт окраску тонического трезвучия. Между ${note[0]} и ${note[2]} звучит ${major ? 'большая терция мажора' : 'малая терция минора'}.`,
+    `На этой ступени строится субдоминантовое трезвучие. Сыграйте ход ${note[3]} → ${note[2]} и послушайте, как мелодия приходит к терции тоники.`,
+    `В тоническом трезвучии ${note[4]} звучит устойчиво. Если взять её в басу и затем перейти на ${note[0]}, получится характерный ход от доминанты к тонике.`,
+    `В трезвучии IV ступени эта нота звучит как терция. В мелодии она часто спускается на V ступень. Попробуйте ход ${note[5]} → ${note[4]}.`,
+    major ? `От ${note[6]} до верхней тоники ${note[0]} всего полтона. Это тесное соседство создаёт сильное тяготение вверх.` :
+      `В натуральном миноре от ${note[6]} до верхней тоники ${note[0]} целый тон. Тяготение вверх мягче, чем в мажоре.`
+  ][index];
+}
+function chordFunction(base) {
+  const target = scale[0].ru.toLowerCase();
+  if (base === 0) return 'Даёт ощущение покоя. На этом аккорде фраза часто заканчивается.';
+  if (base === 3) return 'Уводит от тоники. После него попробуйте сыграть доминанту, а затем вернуться к тонике.';
+  if (mode === 'minor') return 'В натуральном миноре этот аккорд минорный. Он мягче ведёт к тонике, чем мажорная доминанта.';
+  return `Создаёт ожидание тоники. Послушайте, как его терция ${scale[6].ru.toLowerCase()} тянется на полтона вверх к ${target}.`;
+}
+function renderLesson() {
+  const i = selectedDegree;
+  $('#degree-picker').innerHTML = scale.slice(0,7).map((n,j)=>
+    `<button class="degree-choice" data-degree="${j}" aria-pressed="${i === j}"><span>${romans[j]}</span> ${n.ru}</button>`
+  ).join('');
+  const name = i === 6 && mode === 'minor' ? 'Натуральная VII ступень' : degreeNames[i];
+  $('#degree-name').textContent = `${romans[i]} · ${scale[i].ru} — ${name.toLowerCase()}`;
+  $('#degree-description').textContent = degreeLesson(i);
+  const tones = ['основной тон','терция','квинта'];
+  const membership = roles.flatMap(r=>{
+    const position = [0,2,4].findIndex(offset=>(r.base+offset)%7 === i);
+    if (position < 0) return [];
+    return [tones[position]+' аккорда '+scale[r.base].symbol+(mode==='minor'?'m':'')];
+  });
+  $('#degree-chords').textContent = scale[i].ru+' — '+membership.join(' и ')+'.';
+  updateExampleButton();
+}
+function updateExampleButton() {
+  const playing = currentPlay === 'example';
+  const example = exampleSteps[selectedDegree].map(step=>scale[step].ru).join(' → ');
+  $('#degree-example').innerHTML = icon(playing ? stopShape : playShape)+(playing ? 'Остановить' : example);
+  $('#degree-example').setAttribute('aria-label',playing ? 'Остановить пример' : 'Послушать пример '+example);
+}
 function staffForChord(role,notes) {
   const gap=8, bottom=64, x=87;
   const ys=notes.map(n=>bottom+(2-n.step)*gap/2);
@@ -78,14 +126,14 @@ function staffForChord(role,notes) {
     s+=accidental(n,x-10-((i===1)?8:0),y)+head(x,y,role.color,'data-target="'+i+'"');
   });
   const down=notes[1].step>=6;
-  s+='<path d="M'+(x+(down?-5.8:5.8))+' '+(ys[down?2:0]+shift)+'V'+(ys[down?0:2]+shift+(down?22:-22))+'" stroke="'+role.color+'" stroke-width="1.7"/>';
+  s+='<path class="chord-stem" d="M'+(x+(down?-5.8:5.8))+' '+(ys[down?2:0]+shift)+'V'+(ys[down?0:2]+shift+(down?22:-22))+'" stroke="'+role.color+'" stroke-width="1.7"/>';
   return '<svg viewBox="0 0 152 94" class="chordstaff" aria-hidden="true">'+s+'</svg>';
 }
 function renderCards() {
   $('#cards').innerHTML=roles.map((r,i)=>{
     const notes=chordNotes(r.base), root=notes[0], minor=mode==='minor', idx=[0,2,4].map(k=>(r.base+k)%7+1);
     const name=root.ru+' '+(minor?'минор':'мажор');
-    return '<button class="chordcard" data-card="'+i+'" style="--tone:'+r.color+';--wash:'+r.wash+';--edge:'+r.edge+'" aria-label="Послушать аккорд '+name+', '+r.name+'"><div class="cardtop"><span class="degree"><span class="roman">'+(minor?romans[r.base].toLowerCase():romans[r.base])+'</span>'+r.name+'</span><span class="cardplay">'+icon(playShape)+'</span></div><div class="cardbody"><div><div class="chordsymbol">'+root.symbol+(minor?'m':'')+'</div><div class="chordname">'+name+'</div></div>'+staffForChord(r,notes)+'</div><div class="cardfoot"><span>'+notes.map(n=>n.ru).join(' · ')+'</span><span class="formula">'+idx.join('–')+'</span></div></button>';
+    return '<button class="chordcard" data-card="'+i+'" aria-describedby="function-'+i+'" style="--tone:'+r.color+';--wash:'+r.wash+';--edge:'+r.edge+'" aria-label="Послушать аккорд '+name+', '+r.name+'"><div class="cardtop"><span class="degree"><span class="roman">'+(minor?romans[r.base].toLowerCase():romans[r.base])+'</span>'+r.name+'</span><span class="cardplay">'+icon(playShape)+'</span></div><div class="cardbody"><div><div class="chordsymbol">'+root.symbol+(minor?'m':'')+'</div><div class="chordname">'+name+'</div></div>'+staffForChord(r,notes)+'</div><p class="chord-function" id="function-'+i+'">'+chordFunction(r.base)+'</p><div class="cardfoot"><span>'+notes.map(n=>n.ru).join(' · ')+'</span><span class="formula">'+idx.join('–')+'</span></div></button>';
   }).join('');
 }
 function render() {
@@ -94,7 +142,7 @@ function render() {
   const name=scale[0].ru+' '+(mode==='major'?'мажор':'минор');
   $('#keyname').textContent=name;
   $('#status').textContent='Гамма '+name+'. '+scale.map(n=>n.ru).join(', ');
-  drawScale(); renderCards(); buttons();
+  drawScale(); renderCards(); buttons(); renderLesson();
 }
 function buttons() {
   const playing=currentPlay==='scale';
@@ -105,10 +153,10 @@ function buttons() {
 function stop() {
   timers.forEach(clearTimeout); timers=[];
   voices.forEach(voice=>{try{voice.stop()}catch{}}); voices=[];
-  flying.forEach(a=>a.cancel()); flying=[];
+  cancelFlights();
   document.querySelectorAll('.sounding,.active').forEach(el=>el.classList.remove('sounding','active'));
   document.querySelectorAll('.cardplay').forEach(el=>el.innerHTML=icon(playShape));
-  currentPlay=null; buttons();
+  currentPlay=null; buttons(); updateExampleButton();
 }
 function after(ms,fn){timers.push(setTimeout(fn,ms))}
 function audioReady(){
@@ -127,23 +175,59 @@ function tone(midi,duration=.55){
     o.connect(g);g.connect(master);o.start(t);o.stop(t+duration+.03);voices.push(o);o.onended=()=>{o.disconnect();g.disconnect();voices=voices.filter(v=>v!==o)};
   });
 }
-function fly(cardIndex){
-  if(reduceMotion.matches)return;
-  const role=roles[cardIndex], card=document.querySelector('[data-card="'+cardIndex+'"]');
-  [0,2,4].forEach((offset,j)=>{
-    const s=document.querySelector('[data-source="'+scalePosition(role.base+offset)+'"]').getBoundingClientRect();
-    const d=card.querySelector('[data-target="'+j+'"]').getBoundingClientRect();
-    const dot=document.createElement('span');dot.className='flying';
-    dot.style.cssText='--tone:'+role.color+';left:'+s.left+'px;top:'+s.top+'px;width:'+s.width+'px;height:'+s.height+'px';
+function cancelFlights() {
+  flying.forEach(animation=>animation.cancel());
+  flying = [];
+}
+function trackFlight(animation, dot) {
+  flying.push(animation);
+  const cleanUp = () => {
+    dot?.remove();
+    flying = flying.filter(item=>item !== animation);
+  };
+  animation.onfinish = animation.oncancel = cleanUp;
+}
+function fly(cardIndex, delay = 0) {
+  if (reduceMotion.matches) return;
+  const role = roles[cardIndex];
+  const card = document.querySelector('[data-card="'+cardIndex+'"]');
+  const notes = [0,2,4].map((offset,j)=>{
+    const source = document.querySelector('[data-source="'+scalePosition(role.base+offset)+'"]');
+    const target = card.querySelector('[data-target="'+j+'"]');
+    return {from:source.getBoundingClientRect(), to:target.getBoundingClientRect(), target};
+  });
+  const stem = card.querySelector('.chord-stem');
+  trackFlight(stem.animate([{opacity:0},{opacity:1}],{
+    duration:220, delay:delay+flightTime+(notes.length-1)*noteDelay-220, fill:'backwards'
+  }));
+  notes.forEach(({from, to, target}, j)=>{
+    const x = from.left + from.width/2;
+    const y = from.top + from.height/2;
+    const dx = to.left + to.width/2 - x;
+    const dy = to.top + to.height/2 - y;
+    const lift = Math.min(88, Math.abs(dy)*0.22);
+    const dot = document.createElement('span');
+    dot.className = 'flying';
+    dot.style.cssText = `--tone:${role.color};left:${x+scrollX}px;top:${y+scrollY}px;width:${from.width}px;height:${from.height}px`;
     document.body.append(dot);
-    const dx=d.left+d.width/2-s.left-s.width/2,dy=d.top+d.height/2-s.top-s.height/2;
-    const a=dot.animate([{transform:'translate(0,0) rotate(-19deg)',opacity:0},{offset:.12,opacity:1},{transform:'translate('+dx+'px,'+dy+'px) rotate(-19deg)',opacity:.9}],{duration:640,delay:j*65,easing:'cubic-bezier(.45,.02,.3,1)'});
-    flying.push(a);a.onfinish=a.oncancel=()=>{dot.remove();flying=flying.filter(item=>item!==a)};
+    // Sample a shallow arc. A single easing curve controls the whole flight.
+    const path = Array.from({length:33},(_,frame)=>{
+      const t = frame/32;
+      const height = dy*t - 4*lift*t*(1-t);
+      const size = 1+(to.width/from.width-1)*t;
+      return {
+        transform:`translate(-50%, -50%) translate3d(${dx*t}px,${height}px,0) rotate(-19deg) scale(${size})`,
+        opacity:Math.max(0,Math.min(1,t/0.1,(1-t)/0.1))
+      };
+    });
+    const timing = {duration:flightTime, delay:delay+j*noteDelay, easing:'cubic-bezier(.38,0,.22,1)', fill:'backwards'};
+    trackFlight(dot.animate(path,timing),dot);
+    trackFlight(target.animate([{opacity:0},{offset:.9,opacity:0},{opacity:1}],timing));
   });
 }
 function selectKey(newPitch){
   stop();pitch=newPitch;render();audioReady();tone(scale[0].midi);
-  roles.forEach((_,i)=>after(i*160,()=>fly(i)));
+  roles.forEach((_,i)=>fly(i,i*245));
 }
 $('#tonics').onclick=e=>{const b=e.target.closest('[data-pitch]');if(b){selectKey(+b.dataset.pitch);$('#tonics [aria-pressed=true]').focus({preventScroll:true})}};
 $('#mode').onchange=e=>{mode=e.target.value;selectKey(pitch)};
@@ -168,8 +252,29 @@ $('#cards').onclick=e=>{
   audioReady();currentPlay=i;card.classList.add('active');card.querySelector('.cardplay').innerHTML=icon(stopShape);
   const role=roles[i],notes=chordNotes(role.base);
   [0,2,4].forEach(k=>document.querySelector('[data-idx="'+scalePosition(role.base+k)+'"]').classList.add('sounding'));
-  fly(i);notes.forEach((n,j)=>after(160*j,()=>tone(n.midi)));
-  after(780,()=>notes.forEach(n=>tone(n.midi,1)));after(1850,stop);
+  selectedDegree=role.base;renderLesson();
+  fly(i);notes.forEach((n,j)=>after(noteDelay*j,()=>tone(n.midi)));
+  const arrival = flightTime + (notes.length-1)*noteDelay;
+  after(arrival,()=>notes.forEach(n=>tone(n.midi,1)));after(arrival+1070,stop);
+};
+$('#degree-picker').onclick = e => {
+  const choice = e.target.closest('[data-degree]');
+  if (!choice) return;
+  stop(); selectedDegree = Number(choice.dataset.degree); renderLesson();
+  $('#degree-picker [aria-pressed=true]').focus({preventScroll:true});
+};
+$('#degree-example').onclick = () => {
+  const playing = currentPlay === 'example';
+  stop();
+  if (playing) return;
+  audioReady(); currentPlay = 'example'; updateExampleButton();
+  const steps = exampleSteps[selectedDegree];
+  steps.forEach((step,j)=>after(j*520,()=>{
+    document.querySelector('.sounding')?.classList.remove('sounding');
+    document.querySelector('[data-idx="'+step+'"]').classList.add('sounding');
+    tone(scale[step].midi,.65);
+  }));
+  after((steps.length-1)*520+700,stop);
 };
 function wave(){
   const canvas=$('#wave'),box=canvas.getBoundingClientRect(),w=box.width,h=box.height,dpr=Math.min(devicePixelRatio||1,2);
@@ -186,4 +291,4 @@ function wave(){
   }
 }
 render();wave();
-new ResizeObserver(()=>{drawScale();wave()}).observe($('.panel'));
+new ResizeObserver(()=>{cancelFlights();drawScale();wave()}).observe($('.panel'));

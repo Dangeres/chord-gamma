@@ -3,3 +3,20 @@
 @media(max-width:980px){.topinner,main{width:94%}.hero canvas{width:28%;opacity:.7}.settings{gap:12px}.mode{width:110px}.cardtop,.cardbody,.cardfoot{padding-left:13px;padding-right:13px}.cardfoot{flex-wrap:wrap}.hero p{max-width:75%}}
 @media(max-width:700px){.topinner,main{width:calc(100% - 28px)}.topinner{height:58px}.brand{font-size:20px}.hero{min-height:148px}.hero p{max-width:95%;font-size:15px}.hero canvas{width:32%;height:60%;opacity:.28}.hero h1{font-size:37px}.panelhead{padding:15px 14px 0}.titlegroup{gap:7px}h2{font-size:23px}.panelicon{display:none}.action{padding:7px 9px;font-size:13px}.settings{padding:14px;align-items:flex-end}.mode{width:90px}#tonics{grid-template-columns:repeat(6,minmax(0,1fr))}.pitch{height:34px}.mode select{height:34px}.scorearea{padding:0 3px}.sectionhead{margin:23px 0 12px;gap:10px}.sectionhead span{padding-left:10px;font-size:13px}#cards{grid-template-columns:1fr;gap:12px}.cardtop,.cardbody,.cardfoot{padding-left:18px;padding-right:18px}.cardbody{min-height:82px}.chordstaff{height:84px}.cardtop{padding-top:13px}.sound{padding:7px 9px}.chordsymbol{font-size:37px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.flying{position:absolute;opacity:0;will-change:transform,opacity}
+.score-note .halo{transition:opacity .2s ease}
+.chordcard{display:flex;flex-direction:column;align-items:stretch}
+.chord-function{margin:0;padding:0 19px 17px;font-size:1rem;line-height:1.5;color:#d4cfda;flex:1}
+.guide-panel{padding:20px 24px}
+#degree-picker{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.degree-choice{padding:9px 6px;background:#24232b;border:1px solid #3a3741;border-radius:7px;font-size:1rem}
+.degree-choice span{font: .87rem Georgia,serif;margin-right:4px;color:var(--muted)}
+.degree-choice[aria-pressed=true]{background:#33283f;border-color:#8e70ac}
+.degree-choice[aria-pressed=true] span{color:var(--purple)}
+.degree-detail{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;border-top:1px solid var(--border);margin-top:18px;padding-top:18px}
+.degree-detail h3{margin:0;font-size:1.13rem}
+.degree-detail p{margin:7px 0 0;line-height:1.5;max-width:76ch}
+#degree-chords{color:var(--muted)}
+#degree-example{flex-shrink:0}
+@media(max-width:700px){.guide-panel{padding:14px}#degree-picker{grid-template-columns:repeat(4,minmax(0,1fr))}.degree-detail{flex-direction:column;gap:12px}.chord-function{padding:0 18px 14px}}
+@media(prefers-reduced-motion:reduce){.score-note .halo{transition:none}}
