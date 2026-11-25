@@ -8,10 +8,11 @@ const roots = {
   minor: ['C','C♯','D','E♭','E','F','F♯','G','G♯','A','B♭','B']
 };
 const intervals = {major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10]};
+const degreeColors = ['#c29aff', '#79caff', '#ffe082', '#83dcb5', '#f0b575', '#ff94a8', '#86e7ef'];
 const roles = [
-  {base:0, name:'Тоника', color:'#c29aff', wash:'#2c2438', edge:'#48374f'},
-  {base:3, name:'Субдоминанта', color:'#83dcb5', wash:'#1c2e29', edge:'#33483f'},
-  {base:4, name:'Доминанта', color:'#f0b575', wash:'#322920', edge:'#4d4033'}
+  {base:0, name:'Тоника', wash:'#2c2438', edge:'#48374f'},
+  {base:3, name:'Субдоминанта', wash:'#1c2e29', edge:'#33483f'},
+  {base:4, name:'Доминанта', wash:'#322920', edge:'#4d4033'}
 ];
 const romans = ['I','II','III','IV','V','VI','VII','VIII'];
 const degreeNames = ['Тоника', 'Надтоника', 'Медианта', 'Субдоминанта', 'Доминанта', 'Субмедианта', 'Вводная ступень'];
@@ -33,8 +34,12 @@ function spell(pc, letter) {
 function makeNote(index) {
   const rootLetter = letters.indexOf(roots[mode][pitch][0]);
   const step = rootLetter + index;
-  const midi = 60 + pitch + intervals[mode][index % 7] + 12 * Math.floor(index / 7);
-  return {...spell(midi % 12,step % 7),step,midi};
+  const degree = index % 7;
+  const midi = 60 + pitch + intervals[mode][degree] + 12 * Math.floor(index / 7);
+  return {...spell(midi % 12,step % 7),step,midi,degree,color:degreeColors[degree]};
+}
+function noteLabel(note, label = note.ru) {
+  return `<span style="color:${note.color}">${label}</span>`;
 }
 function clef(x,y,size=1) {
   return '<path d="'+clefPath+'" transform="translate('+x+' '+y+') scale('+size+')" fill="#a7a0b3"/>';
@@ -52,7 +57,7 @@ function head(x,y,color,id='') {
   return '<ellipse '+id+' cx="'+x+'" cy="'+y+'" rx="6.8" ry="4.6" transform="rotate(-19 '+x+' '+y+')" fill="'+color+'"/>';
 }
 function accidental(note,x,y) {
-  return note.sign ? '<text x="'+x+'" y="'+(y+5)+'" text-anchor="end" fill="#e1dce7" font-size="19" font-family="Georgia,serif">'+note.sign+'</text>' : '';
+  return note.sign ? '<text x="'+x+'" y="'+(y+5)+'" text-anchor="end" fill="'+note.color+'" font-size="19" font-family="Georgia,serif">'+note.sign+'</text>' : '';
 }
 function drawScale() {
   const w = Math.max(285,Math.round($('#scale-score').clientWidth));
@@ -62,16 +67,16 @@ function drawScale() {
   let svg = lines(2,w-2,bottom,gap)+clef(narrow?13:25,bottom-gap*1.45,gap/11*.92);
   scale.forEach((n,i)=>{
     const x=xs[i], y=bottom+(2-n.step)*gap/2;
-    const color=(roles.find(r=>r.base===i || (i===7 && r.base===0)) || {color:'#d3cedf'}).color;
+    const color=n.color;
     const down=n.step>=6, stemX=x+(down?-5.8:5.8);
-    svg += '<g class="score-note" data-idx="'+i+'" role="button" tabindex="0" aria-label="Построить гамму от '+n.ru+'"><rect x="'+(x-(w-start-end)/16)+'" y="0" width="'+((w-start-end)/8)+'" height="160" fill="transparent"/><circle class="halo" cx="'+x+'" cy="'+y+'" r="16" fill="'+color+'"/>'+ledger(x,y,bottom,gap)+accidental(n,x-9,y)+'<path d="M'+stemX+' '+y+'v'+(down?31:-31)+'" stroke="'+color+'" stroke-width="1.9"/>'+head(x,y,color,'data-source="'+i+'"')+'<text x="'+x+'" y="132" text-anchor="middle" fill="'+color+'" font-size="'+(narrow?13:15)+'" font-weight="550">'+n.ru+'</text><text x="'+x+'" y="152" text-anchor="middle" font-size="12" fill="#aaa3b5" font-family="Georgia,serif">'+romans[i]+'</text></g>';
+    svg += '<g class="score-note" data-idx="'+i+'" role="button" tabindex="0" aria-label="Построить гамму от '+n.ru+'"><rect x="'+(x-(w-start-end)/16)+'" y="0" width="'+((w-start-end)/8)+'" height="160" fill="transparent"/><circle class="halo" cx="'+x+'" cy="'+y+'" r="16" fill="'+color+'"/>'+ledger(x,y,bottom,gap)+accidental(n,x-9,y)+'<path d="M'+stemX+' '+y+'v'+(down?31:-31)+'" stroke="'+color+'" stroke-width="1.9"/>'+head(x,y,color,'data-source="'+i+'"')+'<text x="'+x+'" y="132" text-anchor="middle" fill="'+color+'" font-size="'+(narrow?13:15)+'" font-weight="550">'+n.ru+'</text><text x="'+x+'" y="152" text-anchor="middle" font-size="12" fill="'+color+'" font-family="Georgia,serif">'+romans[i]+'</text></g>';
   });
   $('#scale-score').innerHTML='<svg viewBox="0 0 '+w+' 167" aria-label="Гамма '+scale[0].ru+'">'+svg+'</svg>';
 }
 function scalePosition(index) { return index <= 7 ? index : index % 7; }
 function chordNotes(base) { return [0,2,4].map(offset=>makeNote(base+offset)); }
 function degreeLesson(index) {
-  const note = scale.map(n=>n.ru.toLowerCase());
+  const note = scale.map(n=>noteLabel(n,n.ru.toLowerCase()));
   const major = mode === 'major';
   return [
     `Главная опора гаммы. Завершите фразу на ноте ${note[0]}, и появится ощущение, что мелодия пришла домой.`,
@@ -85,36 +90,36 @@ function degreeLesson(index) {
   ][index];
 }
 function chordFunction(base) {
-  const target = scale[0].ru.toLowerCase();
+  const target = noteLabel(scale[0],scale[0].ru.toLowerCase());
   if (base === 0) return 'Даёт ощущение покоя. На этом аккорде фраза часто заканчивается.';
   if (base === 3) return 'Уводит от тоники. После него попробуйте сыграть доминанту, а затем вернуться к тонике.';
   if (mode === 'minor') return 'В натуральном миноре этот аккорд минорный. Он мягче ведёт к тонике, чем мажорная доминанта.';
-  return `Создаёт ожидание тоники. Послушайте, как его терция ${scale[6].ru.toLowerCase()} тянется на полтона вверх к ${target}.`;
+  return `Создаёт ожидание тоники. Послушайте, как его терция ${noteLabel(scale[6],scale[6].ru.toLowerCase())} тянется на полтона вверх к ${target}.`;
 }
 function renderLesson() {
   const i = selectedDegree;
   $('#degree-picker').innerHTML = scale.slice(0,7).map((n,j)=>
-    `<button class="degree-choice" data-degree="${j}" aria-pressed="${i === j}"><span>${romans[j]}</span> ${n.ru}</button>`
+    `<button class="degree-choice" style="--note-color:${n.color}" data-degree="${j}" aria-pressed="${i === j}"><span>${romans[j]}</span> ${n.ru}</button>`
   ).join('');
   const name = i === 6 && mode === 'minor' ? 'Натуральная VII ступень' : degreeNames[i];
-  $('#degree-name').textContent = `${romans[i]} · ${scale[i].ru} — ${name.toLowerCase()}`;
-  $('#degree-description').textContent = degreeLesson(i);
+  $('#degree-name').innerHTML = `${noteLabel(scale[i],romans[i]+' · '+scale[i].ru)} — ${name.toLowerCase()}`;
+  $('#degree-description').innerHTML = degreeLesson(i);
   const tones = ['основной тон','терция','квинта'];
   const membership = roles.flatMap(r=>{
     const position = [0,2,4].findIndex(offset=>(r.base+offset)%7 === i);
     if (position < 0) return [];
-    return [tones[position]+' аккорда '+scale[r.base].symbol+(mode==='minor'?'m':'')];
+    return [tones[position]+' аккорда '+noteLabel(scale[r.base],scale[r.base].symbol+(mode==='minor'?'m':''))];
   });
-  $('#degree-chords').textContent = scale[i].ru+' — '+membership.join(' и ')+'.';
+  $('#degree-chords').innerHTML = noteLabel(scale[i])+' — '+membership.join(' и ')+'.';
   updateExampleButton();
 }
 function updateExampleButton() {
   const playing = currentPlay === 'example';
-  const example = exampleSteps[selectedDegree].map(step=>scale[step].ru).join(' → ');
-  $('#degree-example').innerHTML = icon(playing ? stopShape : playShape)+(playing ? 'Остановить' : example);
-  $('#degree-example').setAttribute('aria-label',playing ? 'Остановить пример' : 'Послушать пример '+example);
+  const notes = exampleSteps[selectedDegree].map(step=>scale[step]);
+  $('#degree-example').innerHTML = icon(playing ? stopShape : playShape)+(playing ? 'Остановить' : notes.map(n=>noteLabel(n)).join(' → '));
+  $('#degree-example').setAttribute('aria-label',playing ? 'Остановить пример' : 'Послушать пример '+notes.map(n=>n.ru).join(' → '));
 }
-function staffForChord(role,notes) {
+function staffForChord(notes) {
   const gap=8, bottom=64, x=87;
   const ys=notes.map(n=>bottom+(2-n.step)*gap/2);
   const shift=Math.max(0,8-ys[2]);
@@ -123,17 +128,17 @@ function staffForChord(role,notes) {
   for(const y of ys) s+=ledger(x,y+shift,b,gap);
   notes.forEach((n,i)=>{
     const y=ys[i]+shift;
-    s+=accidental(n,x-10-((i===1)?8:0),y)+head(x,y,role.color,'data-target="'+i+'"');
+    s+=accidental(n,x-10-((i===1)?8:0),y)+head(x,y,n.color,'data-target="'+i+'"');
   });
   const down=notes[1].step>=6;
-  s+='<path class="chord-stem" d="M'+(x+(down?-5.8:5.8))+' '+(ys[down?2:0]+shift)+'V'+(ys[down?0:2]+shift+(down?22:-22))+'" stroke="'+role.color+'" stroke-width="1.7"/>';
+  s+='<path class="chord-stem" d="M'+(x+(down?-5.8:5.8))+' '+(ys[down?2:0]+shift)+'V'+(ys[down?0:2]+shift+(down?22:-22))+'" stroke="#b6afc0" stroke-width="1.7"/>';
   return '<svg viewBox="0 0 152 94" class="chordstaff" aria-hidden="true">'+s+'</svg>';
 }
 function renderCards() {
   $('#cards').innerHTML=roles.map((r,i)=>{
-    const notes=chordNotes(r.base), root=notes[0], minor=mode==='minor', idx=[0,2,4].map(k=>(r.base+k)%7+1);
+    const notes=chordNotes(r.base), root=notes[0], minor=mode==='minor';
     const name=root.ru+' '+(minor?'минор':'мажор');
-    return '<button class="chordcard" data-card="'+i+'" aria-describedby="function-'+i+'" style="--tone:'+r.color+';--wash:'+r.wash+';--edge:'+r.edge+'" aria-label="Послушать аккорд '+name+', '+r.name+'"><div class="cardtop"><span class="degree"><span class="roman">'+(minor?romans[r.base].toLowerCase():romans[r.base])+'</span>'+r.name+'</span><span class="cardplay">'+icon(playShape)+'</span></div><div class="cardbody"><div><div class="chordsymbol">'+root.symbol+(minor?'m':'')+'</div><div class="chordname">'+name+'</div></div>'+staffForChord(r,notes)+'</div><p class="chord-function" id="function-'+i+'">'+chordFunction(r.base)+'</p><div class="cardfoot"><span>'+notes.map(n=>n.ru).join(' · ')+'</span><span class="formula">'+idx.join('–')+'</span></div></button>';
+    return '<button class="chordcard" data-card="'+i+'" aria-describedby="function-'+i+'" style="--tone:'+root.color+';--wash:'+r.wash+';--edge:'+r.edge+'" aria-label="Послушать аккорд '+name+', '+r.name+'"><div class="cardtop"><span class="degree"><span class="roman">'+(minor?romans[r.base].toLowerCase():romans[r.base])+'</span>'+r.name+'</span><span class="cardplay">'+icon(playShape)+'</span></div><div class="cardbody"><div><div class="chordsymbol">'+root.symbol+(minor?'m':'')+'</div><div class="chordname">'+name+'</div></div>'+staffForChord(notes)+'</div><p class="chord-function" id="function-'+i+'">'+chordFunction(r.base)+'</p><div class="cardfoot"><span>'+notes.map(n=>noteLabel(n)).join(' · ')+'</span><span class="formula">'+notes.map(n=>noteLabel(n,n.degree+1)).join('–')+'</span></div></button>';
   }).join('');
 }
 function render() {
@@ -192,15 +197,16 @@ function fly(cardIndex, delay = 0) {
   const role = roles[cardIndex];
   const card = document.querySelector('[data-card="'+cardIndex+'"]');
   const notes = [0,2,4].map((offset,j)=>{
-    const source = document.querySelector('[data-source="'+scalePosition(role.base+offset)+'"]');
+    const index = scalePosition(role.base+offset);
+    const source = document.querySelector('[data-source="'+index+'"]');
     const target = card.querySelector('[data-target="'+j+'"]');
-    return {from:source.getBoundingClientRect(), to:target.getBoundingClientRect(), target};
+    return {from:source.getBoundingClientRect(), to:target.getBoundingClientRect(), color:scale[index].color, target};
   });
   const stem = card.querySelector('.chord-stem');
   trackFlight(stem.animate([{opacity:0},{opacity:1}],{
     duration:220, delay:delay+flightTime+(notes.length-1)*noteDelay-220, fill:'backwards'
   }));
-  notes.forEach(({from, to, target}, j)=>{
+  notes.forEach(({from, to, color, target}, j)=>{
     const x = from.left + from.width/2;
     const y = from.top + from.height/2;
     const dx = to.left + to.width/2 - x;
@@ -208,7 +214,7 @@ function fly(cardIndex, delay = 0) {
     const lift = Math.min(88, Math.abs(dy)*0.22);
     const dot = document.createElement('span');
     dot.className = 'flying';
-    dot.style.cssText = `--tone:${role.color};left:${x+scrollX}px;top:${y+scrollY}px;width:${from.width}px;height:${from.height}px`;
+    dot.style.cssText = `--tone:${color};left:${x+scrollX}px;top:${y+scrollY}px;width:${from.width}px;height:${from.height}px`;
     document.body.append(dot);
     // Sample a shallow arc. A single easing curve controls the whole flight.
     const path = Array.from({length:33},(_,frame)=>{
