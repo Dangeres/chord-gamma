@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111016">
+<title>Ладограф — гамма и трезвучия</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23ae90ff'/%3E%3Cpath d='M8 22v-5m6 12V12m6 20V8m6 20V13m6 10v-6' stroke='%23251a36' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar"><div class="topinner"><span class="brand"><svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="#b69afc"/><path d="M8 23v-6m6 11V12m6 20V8m6 19V13m6 10v-6" stroke="#20152e" stroke-width="3.2" stroke-linecap="round"/></svg>Ладограф</span><button id="sound" class="sound" aria-pressed="true"></button></div></header>
+<main>
+<section class="hero"><div><h1>Гамма и трезвучия</h1><p>Выберите тонику и проследите, как ноты гаммы собираются в аккорды.</p></div><canvas id="wave" aria-hidden="true"></canvas></section>
+<section class="panel" aria-labelledby="scale-title">
+<div class="panelhead"><div class="titlegroup"><span class="panelicon" aria-hidden="true">♫</span><h2 id="scale-title">Гамма</h2><span id="keyname" class="keyname"></span></div><button id="play-scale" class="action"></button></div>
+<div class="settings"><div class="tonic"><span class="fieldlabel" id="tonic-lbl">Тоника</span><div id="tonics" role="group" aria-labelledby="tonic-lbl"></div></div><label class="mode"><span class="fieldlabel">Лад</span><select id="mode"><option value="major">Мажор</option><option value="minor">Нат. минор</option></select></label></div>
+<div class="scorearea"><div id="scale-score"></div></div>
+</section>
+<section aria-labelledby="triad-title" class="triad-section"><div class="sectionhead"><h2 id="triad-title">Трезвучия</h2><span>Берём по три ноты через ступень</span></div><div id="cards"></div></section>
+</main><div class="sr" role="status" id="status"></div>
+<script src="app.js"></script></body></html>
